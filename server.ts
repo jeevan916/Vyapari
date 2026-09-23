@@ -558,9 +558,23 @@ app.post('/logout', (req: Request, res: Response) => {
 // ----------------------------------------------------
 app.get('/', requireLogin, (req: Request, res: Response) => {
   const rows = getDashboardTotals();
+  const vyapariMap = new Map<number, string>(
+    vyaparis.filter((v) => !v.deleted_at).map((v) => [v.id, v.vyapari_name])
+  );
+  const recentTransactions = transactions
+    .filter((t) => !t.deleted_at)
+    .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date) || b.id - a.id)
+    .slice(0, 10)
+    .map((t) => ({
+      ...t,
+      vyapari_name: vyapariMap.get(t.vyapari_id) || `Vyapari #${t.vyapari_id}`,
+      type_label: TYPES[t.transaction_type] || t.transaction_type,
+    }));
+
   res.render('dashboard/index', {
     title: 'Dashboard',
     rows,
+    recentTransactions,
   });
 });
 
