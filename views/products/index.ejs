@@ -1,0 +1,31 @@
+<%- include('../layouts/header') %>
+<div class="page-heading">
+    <div><span class="eyebrow">INVENTORY</span><h1>Products</h1></div>
+    <a class="btn primary" href="/products/create">New Product</a>
+</div>
+<section class="table-wrap">
+    <table>
+        <thead><tr><th>Product</th><th>Vyapari</th><th class="num">Purity</th><th class="num">Rate</th><th>Actions</th></tr></thead>
+        <tbody>
+        <% if (products.length === 0) { %>
+            <tr><td colspan="5" style="text-align:center; padding: 20px; color: #64748b;">No products found. <a href="/products/create" style="color: #176b58; font-weight: bold;">Create a Product</a></td></tr>
+        <% } %>
+        <% products.forEach(function(row) { %>
+            <tr>
+                <td><strong><%= row.product_name %></strong></td>
+                <td><%= row.vyapari_name || 'Common' %></td>
+                <td class="num"><%= row.purity %></td>
+                <td class="num"><%= row.rate %></td>
+                <td class="actions">
+                    <a class="btn" href="/products/edit?id=<%= row.id %>">Edit</a>
+                    <form method="post" action="/products/delete" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this product?');">
+                        <input type="hidden" name="id" value="<%= row.id %>">
+                        <button class="btn danger" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        <% }); %>
+        </tbody>
+    </table>
+</section>
+<%- include('../layouts/footer') %>

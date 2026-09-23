@@ -1,0 +1,151 @@
+<%- include('../layouts/header') %>
+<%
+const styles = {
+    'maal-liya': { class: 'type-maal-liya', name: 'Maal liya' },
+    'maal-return': { class: 'type-maal-return', name: 'Maal return' },
+    'fine-diya': { class: 'type-fine-diya', name: 'Fine diya' },
+    'cash-diya': { class: 'type-cash-diya', name: 'Cash diya' },
+    'bank-payment-diya': { class: 'type-bank-payment-diya', name: 'Bank payment' },
+    'cash-rate-cut': { class: 'type-cash-rate-cut', name: 'Cash rate cut' },
+    'bill-rate-cut': { class: 'type-bill-rate-cut', name: 'Bill rate cut' },
+    'opening-balance': { class: 'type-other', name: 'Opening balance' }
+};
+
+const quick = [
+    ['Maal liya', 'maal-liya', 'primary'],
+    ['Maal return', 'maal-return', ''],
+    ['Fine diya', 'fine-diya', 'warning'],
+    ['Cash diya', 'cash-diya', 'success'],
+    ['Bank payment', 'bank-payment-diya', 'danger'],
+    ['Cash rate cut', 'cash-rate-cut', ''],
+    ['Bill rate cut', 'bill-rate-cut', '']
+];
+%>
+
+<div class="mobile-ledger">
+    <header class="ledger-header">
+        <div class="ledger-controls">
+            <a class="ledger-back" href="/vyaparis">&lsaquo; Traders</a>
+            <button class="ledger-print" type="button" onclick="window.print()">Ledger view</button>
+        </div>
+        <h1><%= currentVyapari ? currentVyapari.vyapari_name : 'Ledger' %></h1>
+        <p><%= currentVyapari ? (currentVyapari.company_name || '') : '' %></p>
+    </header>
+
+    <section class="ledger-filter card">
+        <form class="compact-filter" method="get" action="/ledger">
+            <label>Vyapari
+                <select name="vyapari_id" onchange="this.form.submit()">
+                    <% vyaparis.forEach(function(v) { %>
+                        <option value="<%= v.id %>" <%= String(vyapariId) === String(v.id) ? 'selected' : '' %>><%= v.vyapari_name %></option>
+                    <% }); %>
+                </select>
+            </label>
+            <label>From <input type="date" name="start_date" value="<%= start || '' %>"></label>
+            <label>To <input type="date" name="end_date" value="<%= end || '' %>"></label>
+            <div class="compact-filter-submit"><button class="btn primary" type="submit">Apply</button></div>
+        </form>
+    </section>
+
+    <section class="balance-grid">
+        <article class="balance-card balance-gold">
+            <span>Gold balance</span>
+            <strong><%= weight3(closing.gold_999) %> g</strong>
+            <small>999 purity</small>
+        </article>
+        <article class="balance-card">
+            <span>Cash balance</span>
+            <strong>₹ <%= money(closing.cash) %></strong>
+        </article>
+        <article class="balance-card">
+            <span>RTGS balance</span>
+            <strong>₹ <%= money(closing.rtgs) %></strong>
+        </article>
+    </section>
+
+    <section class="quick-actions">
+        <h2>Add transaction</h2>
+        <div class="quick-action-grid">
+            <% quick.forEach(function([label, type, cls]) { %>
+                <a class="quick-action <%= cls %>" href="/transactions/create?vyapari_id=<%= vyapariId %>&type=<%= type %>"><%= label %></a>
+            <% }); %>
+            <a class="quick-action product" href="/products/create?vyapari_id=<%= vyapariId %>">Add product</a>
+        </div>
+    </section>
+
+    <section class="ledger-period card">
+        <div><span>Opening gold · 999</span><strong><%= weight3(opening.gold_999) %> g</strong></div>
+        <div><span>Received · 999</span><strong><%= weight3(liya.gold_999) %> g</strong></div>
+        <div><span>Given · 999</span><strong><%= weight3(diya.gold_999) %> g</strong></div>
+    </section>
+
+    <section class="entry-list">
+        <h2>Transactions</h2>
+        <% if (!transactions || transactions.length === 0) { %>
+            <div class="empty-ledger">No transactions for this period.</div>
+        <% } %>
+        <% (transactions || []).forEach(function(row) { %>
+            <%
+            const style = styles[row.transaction_type] || { class: 'type-other', name: 'Transaction' };
+            const gold999 = (Number(row.balance_cat_995) || 0) * 0.995;
+            const txDate = new Date(row.transaction_date);
+            const dateStr = isNaN(txDate.getTime()) ? row.transaction_date : txDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            const yearStr = isNaN(txDate.getTime()) ? '' : txDate.getFullYear();
+            %>
+            <article class="ledger-entry <%= style.class %>">
+                <div class="entry-date"><%= dateStr %><small><%= yearStr %></small></div>
+                <span class="entry-type-dot"></span>
+                <div class="entry-compact-details">
+                    <span><%= row.product_name %></span>
+                    <% if (Number(row.net_weight) !== 0) { %><span><%= weight3(row.net_weight) %>g</span><% } %>
+                    <% if (Number(row.melting) !== 0) { %><span><%= row.melting %>%</span><% } %>
+                    <% if (Number(row.rate) !== 0) { %><span><%= row.rate %>%</span><% } %>
+                    <% if (Number(row.cash_bhav) !== 0) { %><span>₹<%= money(row.cash_bhav) %></span><% } %>
+                    <% if (Number(row.gst_bhav) !== 0) { %><span>₹<%= money(row.gst_bhav) %></span><% } %>
+                </div>
+                <div class="entry-values">
+                    <% if (Number(row.balance_cat_995) !== 0) { %><strong><%= weight3(gold999) %> g <small>999</small></strong><% } %>
+                    <% if (Number(row.cash_amount) !== 0) { %><span>Cash ₹ <%= money(row.cash_amount) %></span><% } %>
+                    <% if (Number(row.rtgs_amount) !== 0) { %><span>RTGS ₹ <%= money(row.rtgs_amount) %></span><% } %>
+                </div>
+                <details class="entry-accordion">
+                    <summary></summary>
+                    <div class="entry-accordion-body">
+                        <div class="entry-detail-grid">
+                            <div><span>Type</span><strong><%= style.name %></strong></div>
+                            <div><span>Gross</span><strong><%= weight3(row.gross_weight) %> g</strong></div>
+                            <div><span>Net</span><strong><%= weight3(row.net_weight) %> g</strong></div>
+                            <div><span>Melting</span><strong><%= row.melting %>%</strong></div>
+                            <div><span>Wstg</span><strong><%= row.rate %>%</strong></div>
+                            <div><span>Gold 995</span><strong><%= weight3(row.balance_cat_995) %> g</strong></div>
+                            <% if (row.notes) { %><div class="entry-detail-note"><span>Notes</span><strong><%= row.notes %></strong></div><% } %>
+                        </div>
+                        <div class="entry-actions">
+                            <a class="entry-action edit" href="/transactions/edit?id=<%= row.id %>">Edit</a>
+                            <form method="post" action="/transactions/delete" class="entry-delete-form" onsubmit="return confirm('Delete this transaction?');">
+                                <input type="hidden" name="id" value="<%= row.id %>">
+                                <button class="entry-action delete" type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </details>
+            </article>
+        <% }); %>
+    </section>
+
+    <section class="panel no-print" style="margin-top: 20px;">
+        <form class="actions" method="post" action="/vyaparis/roundoff">
+            <input type="hidden" name="vyapari_id" value="<%= vyapariId %>">
+            <input type="hidden" name="end_date" value="<%= end %>">
+            <input type="hidden" name="grandtotal_cash" value="<%= closing.cash %>">
+            <input type="hidden" name="grandtotal_rtgs" value="<%= closing.rtgs %>">
+            <input type="hidden" name="grandtotal_cat_995" value="<%= closing.cat_995 %>">
+            <button class="btn" type="submit">Roundoff Carry Forward</button>
+        </form>
+        <form class="actions" method="post" action="/vyaparis/settle" style="margin-top:8px" onsubmit="return confirm('Are you sure you want to settle all transactions for this Vyapari?');">
+            <input type="hidden" name="vyapari_id" value="<%= vyapariId %>">
+            <button class="btn danger" type="submit">Settle All Transactions</button>
+        </form>
+    </section>
+</div>
+<%- include('../layouts/footer') %>

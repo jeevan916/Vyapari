@@ -1,0 +1,22 @@
+<%- include('../layouts/header') %>
+<section class="auth-card panel">
+    <h1>Login</h1>
+    <p class="muted">Sign in to manage vyapari ledger entries.</p>
+    <form method="post" action="/login" class="grid">
+        <label>Email <input type="email" name="email" value="<%= email || 'admin@example.com' %>" required autofocus></label>
+        <label>Password <input type="password" name="password" value="<%= password || 'ChangeThisPassword123' %>" required></label>
+        <button class="btn primary" type="submit">Login</button>
+    </form>
+    <div style="margin-top: 14px; display: grid; gap: 8px;">
+        <form method="post" action="/login">
+            <input type="hidden" name="email" value="admin@example.com">
+            <input type="hidden" name="password" value="ChangeThisPassword123">
+            <button class="btn success" type="submit" style="width: 100%;">Instant Login as Admin</button>
+        </form>
+    </div>
+    <div style="margin-top: 12px; padding: 10px; background: #f0f4f8; border-radius: 6px; font-size: 0.78rem; color: #475569;">
+        <strong>Demo Login:</strong> admin@example.com &bull; ChangeThisPassword123
+    </div>
+</section>
+<%- include('../layouts/footer') %>
+

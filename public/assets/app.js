@@ -25,3 +25,44 @@ document.addEventListener('input', (event) => {
         if (net) net.value = event.target.value;
     }
 });
+
+// Sync auth token from URL into localStorage or across navigation in iframes
+(function() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const authFromUrl = urlParams.get('auth');
+        if (authFromUrl) {
+            localStorage.setItem('vyapari_auth_token', authFromUrl);
+        }
+        const token = localStorage.getItem('vyapari_auth_token');
+        if (token) {
+            document.addEventListener('click', (e) => {
+                const anchor = e.target.closest('a');
+                if (anchor && anchor.href && anchor.origin === window.location.origin && !anchor.href.includes('logout')) {
+                    const url = new URL(anchor.href);
+                    if (!url.searchParams.has('auth')) {
+                        url.searchParams.set('auth', token);
+                        anchor.href = url.toString();
+                    }
+                }
+            });
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (form && form.action && form.action.includes('logout')) {
+                    localStorage.removeItem('vyapari_auth_token');
+                    return;
+                }
+                if (form && !form.querySelector('input[name="auth"]')) {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'auth';
+                    hidden.value = token;
+                    form.appendChild(hidden);
+                }
+            });
+        }
+    } catch (e) {
+        // ignore localStorage access issues
+    }
+})();
+

@@ -1,0 +1,42 @@
+<%- include('../layouts/header') %>
+<div class="page-heading">
+    <div><span class="eyebrow">OVERVIEW</span><h1>Dashboard</h1></div>
+    <div class="actions">
+        <a class="btn primary" href="/transactions/create">New Transaction</a>
+        <a class="btn" href="/ledger">Open Ledger</a>
+    </div>
+</div>
+
+<%
+let totalCash = rows.reduce((sum, r) => sum + (Number(r.cash) || 0), 0);
+let totalRtgs = rows.reduce((sum, r) => sum + (Number(r.rtgs) || 0), 0);
+let totalGold = rows.reduce((sum, r) => sum + (Number(r.gold_999) || 0), 0);
+%>
+
+<section class="directory-summary">
+    <div><span>Total Cash</span><strong>₹ <%= money(totalCash) %></strong></div>
+    <div><span>Total RTGS</span><strong>₹ <%= money(totalRtgs) %></strong></div>
+    <div class="directory-gold"><span>Total Gold · 999</span><strong><%= weight3(totalGold) %> g</strong></div>
+</section>
+
+<section class="table-wrap" style="margin-top:18px">
+    <table>
+        <thead><tr><th>Vyapari</th><th>Company</th><th class="num">Cash</th><th class="num">RTGS</th><th class="num">Gold 999</th><th>Actions</th></tr></thead>
+        <tbody>
+        <% if (rows.length === 0) { %>
+            <tr><td colspan="6" style="text-align:center; padding: 20px; color: #64748b;">No vyaparis found. <a href="/vyaparis/create" style="color: #176b58; font-weight: bold;">Add a Vyapari</a></td></tr>
+        <% } %>
+        <% rows.forEach(function(row) { %>
+            <tr>
+                <td><strong><%= row.vyapari_name %></strong></td>
+                <td><%= row.company_name || '-' %></td>
+                <td class="num">₹ <%= money(row.cash) %></td>
+                <td class="num">₹ <%= money(row.rtgs) %></td>
+                <td class="num directory-gold-value"><%= weight3(row.gold_999) %> g</td>
+                <td><a class="btn" href="/ledger?vyapari_id=<%= row.id %>">Ledger</a></td>
+            </tr>
+        <% }); %>
+        </tbody>
+    </table>
+</section>
+<%- include('../layouts/footer') %>

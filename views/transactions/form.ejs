@@ -1,0 +1,125 @@
+<%- include('../layouts/header') %>
+<%
+const isEdit = Boolean(transaction && transaction.id);
+const type = transaction.transaction_type || currentType || 'maal-liya';
+const systemNames = {
+    'fine-diya': 'FINE DIYA',
+    'cash-diya': 'CASH PAID',
+    'bank-payment-diya': 'RTGS DONE',
+    'cash-rate-cut': 'CASH CUT FINE JAMA',
+    'bill-rate-cut': 'BILL CUT FINE JAMA'
+};
+const productName = transaction.product_name || (systemNames[type] || '');
+const isMoneyOnly = ['cash-diya', 'bank-payment-diya'].includes(type);
+const isFineOnly = type === 'fine-diya';
+const isRateCut = ['cash-rate-cut', 'bill-rate-cut'].includes(type);
+const showProduct = ['maal-liya', 'maal-return'].includes(type);
+const showCashInputs = ['maal-liya', 'maal-return', 'cash-diya', 'cash-rate-cut'].includes(type);
+const showBillInputs = ['maal-liya', 'maal-return', 'bank-payment-diya', 'bill-rate-cut'].includes(type);
+%>
+
+<div class="page-heading">
+    <div><span class="eyebrow">BOOKKEEPING</span><h1><%= title %></h1></div>
+</div>
+
+<form class="panel transaction-form grid cols-3" method="post" action="<%= isEdit ? '/transactions/update' : '/transactions/store' %>">
+    <% if (isEdit) { %><input type="hidden" name="id" value="<%= transaction.id %>"><% } %>
+    <input type="hidden" name="product_name" value="<%= productName %>">
+    <% if (!showProduct) { %><input type="hidden" name="product_id" value=""><% } %>
+
+    <label>Transaction Date <input type="date" name="transaction_date" required value="<%= transaction.transaction_date || today %>"></label>
+    <label>Vyapari
+        <select name="vyapari_id" required>
+            <option value="">Select Vyapari</option>
+            <% vyaparis.forEach(function(v) { %>
+                <option value="<%= v.id %>" <%= String(transaction.vyapari_id || selectedVyapariId || '') === String(v.id) ? 'selected' : '' %>><%= v.vyapari_name %></option>
+            <% }); %>
+        </select>
+    </label>
+    <label>Type
+        <select name="transaction_type" required data-transaction-type>
+            <% Object.entries(types).forEach(function([key, label]) { %>
+                <option value="<%= key %>" <%= type === key ? 'selected' : '' %>><%= label %></option>
+            <% }); %>
+        </select>
+    </label>
+
+    <% if (showProduct) { %>
+        <label>Product
+            <select name="product_id" data-product-select>
+                <option value="">Select Product</option>
+                <% products.forEach(function(p) { %>
+                    <option value="<%= p.id %>" data-name="<%= p.product_name %>" data-rate="<%= p.rate %>" data-purity="<%= p.purity %>" <%= String(transaction.product_id || '') === String(p.id) ? 'selected' : '' %>>
+                        <%= p.product_name %><%= p.vyapari_name ? ' - ' + p.vyapari_name : '' %>
+                    </option>
+                <% }); %>
+            </select>
+        </label>
+        <label>Product Name <input name="product_name_visible" data-product-name-visible value="<%= productName %>" readonly></label>
+    <% } else { %>
+        <label>Product Name <input value="<%= productName %>" readonly></label>
+    <% } %>
+
+    <% if (!isMoneyOnly) { %>
+        <label>Melting <input type="number" step="any" name="melting" value="<%= transaction.melting ?? '' %>"></label>
+        <% if (['maal-liya', 'maal-return'].includes(type)) { %>
+            <label>Wstg <input type="number" step="any" name="rate" value="<%= transaction.rate ?? '' %>"></label>
+        <% } else { %>
+            <input type="hidden" name="rate" value="0">
+        <% } %>
+        <label>Gr.Wt <input type="number" step="any" name="gross_weight" data-gross-weight value="<%= transaction.gross_weight ?? '' %>"></label>
+        <label>Net.Wt <input type="number" step="any" name="net_weight" data-net-weight value="<%= transaction.net_weight ?? '' %>"></label>
+    <% } else { %>
+        <input type="hidden" name="melting" value="0"><input type="hidden" name="rate" value="0"><input type="hidden" name="gross_weight" value="0"><input type="hidden" name="net_weight" value="0">
+    <% } %>
+
+    <% if (showCashInputs) { %>
+        <label><%= type === 'cash-diya' ? 'Cash Amount Paid' : 'Cash Charge Amount' %><input type="number" step="any" name="cash_charge_amount" value="<%= transaction.cash_charge_amount ?? '0' %>"></label>
+    <% } else { %>
+        <input type="hidden" name="cash_charge_amount" value="0">
+    <% } %>
+
+    <% if (showBillInputs) { %>
+        <label><%= type === 'bank-payment-diya' ? 'RTGS/CHEQUE Amount Paid' : 'Bill Charge Amount' %><input type="number" step="any" name="bill_charge_amount" value="<%= transaction.bill_charge_amount ?? '0' %>"></label>
+    <% } else { %>
+        <input type="hidden" name="bill_charge_amount" value="0">
+    <% } %>
+
+    <% if (['maal-liya', 'maal-return', 'bill-rate-cut'].includes(type)) { %>
+        <label>10gm Bill 995 Rate <input type="number" step="any" name="ten_gram_bill_995_rate" value="<%= transaction.ten_gram_bill_995_rate ?? '' %>"></label>
+    <% } else { %>
+        <input type="hidden" name="ten_gram_bill_995_rate" value="0">
+    <% } %>
+
+    <% if (['maal-liya', 'maal-return', 'cash-rate-cut'].includes(type)) { %>
+        <label>10gm Cash 995 Rate <input type="number" step="any" name="ten_gram_cash_995_rate" value="<%= transaction.ten_gram_cash_995_rate ?? '' %>"></label>
+    <% } else { %>
+        <input type="hidden" name="ten_gram_cash_995_rate" value="0">
+    <% } %>
+
+    <% if (type === 'opening-balance') { %>
+        <label>Liya/Diya
+            <select name="liya_diya">
+                <option value="liya" <%= (transaction.liya_diya || 'liya') === 'liya' ? 'selected' : '' %>>Liya</option>
+                <option value="diya" <%= transaction.liya_diya === 'diya' ? 'selected' : '' %>>Diya</option>
+            </select>
+        </label>
+        <label>Opening Cash Amount <input type="number" step="any" name="cash_amount" value="<%= transaction.cash_amount ?? '0' %>"></label>
+        <label>Opening RTGS Amount <input type="number" step="any" name="rtgs_amount" value="<%= transaction.rtgs_amount ?? '0' %>"></label>
+        <label>Opening Cat 995 <input type="number" step="any" name="balance_cat_995" value="<%= transaction.balance_cat_995 ?? '0' %>"></label>
+    <% } %>
+
+    <label style="grid-column:1/-1">Notes <textarea name="notes"><%= transaction.notes || '' %></textarea></label>
+
+    <div class="calc-note" style="grid-column:1/-1">
+        <% if (isRateCut) { %>Rate cut saves two ledger rows: fine diya plus cash/bill jama.<% } %>
+        <% if (isFineOnly) { %>Fine diya stores rate and money fields as zero, with gold balance negative.<% } %>
+        <% if (isMoneyOnly) { %>This entry affects only <%= type === 'cash-diya' ? 'cash' : 'RTGS' %> balance.<% } %>
+    </div>
+
+    <div class="form-actions" style="grid-column:1/-1">
+        <button class="btn success" type="submit">Save</button>
+        <a class="btn" href="<%= (transaction.vyapari_id || selectedVyapariId) ? '/ledger?vyapari_id=' + (transaction.vyapari_id || selectedVyapariId) : '/transactions' %>">Close</a>
+    </div>
+</form>
+<%- include('../layouts/footer') %>

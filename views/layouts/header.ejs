@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= (typeof title !== 'undefined' && title ? title + ' - ' : '') + (typeof appName !== 'undefined' ? appName : 'Vyapari') %></title>
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<% if (typeof user !== 'undefined' && user) { %>
+    <header class="navbar">
+        <a class="brand" href="/"><%= typeof appName !== 'undefined' ? appName : 'Vyapari' %></a>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/vyaparis">Vyapari</a>
+            <a href="/products">Products</a>
+            <a href="/transactions">Transactions</a>
+        </nav>
+        <form method="post" action="/logout">
+            <button class="logout" type="submit">Logout (<%= user.name || 'Admin' %>)</button>
+        </form>
+    </header>
+<% } %>
+<main class="<%= (typeof user !== 'undefined' && user) ? 'main container-fluid' : 'auth-main' %>">
+    <% if (typeof flash !== 'undefined' && flash && flash.success) { %><div class="alert success"><%= flash.success %></div><% } %>
+    <% if (typeof flash !== 'undefined' && flash && flash.error) { %><div class="alert error"><%= flash.error %></div><% } %>

@@ -1,0 +1,21 @@
+<%- include('../layouts/header') %>
+<% const isEdit = Boolean(vyapari && vyapari.id); %>
+<div class="page-heading">
+    <div><span class="eyebrow">DIRECTORY</span><h1><%= title %></h1></div>
+</div>
+<form class="panel grid cols-2" method="post" action="<%= isEdit ? '/vyaparis/update' : '/vyaparis/store' %>">
+    <% if (isEdit) { %><input type="hidden" name="id" value="<%= vyapari.id %>"><% } %>
+    <label>Vyapari Name <input name="vyapari_name" required value="<%= vyapari.vyapari_name || '' %>"></label>
+    <label>Company Name <input name="company_name" value="<%= vyapari.company_name || '' %>"></label>
+    <label>Email <input type="email" name="email_id" value="<%= vyapari.email_id || '' %>"></label>
+    <label>Primary Number <input name="primary_number" value="<%= vyapari.primary_number || '' %>"></label>
+    <label>Secondary Number <input name="secondary_number" value="<%= vyapari.secondary_number || '' %>"></label>
+    <label>GST Number <input name="gst_number" value="<%= vyapari.gst_number || '' %>"></label>
+    <label>City <input name="city" value="<%= vyapari.city || '' %>"></label>
+    <label>State <input name="state" value="<%= vyapari.state || '' %>"></label>
+    <div class="form-actions" style="grid-column: 1 / -1;">
+        <button class="btn primary" type="submit">Save</button>
+        <a class="btn" href="/vyaparis">Cancel</a>
+    </div>
+</form>
+<%- include('../layouts/footer') %>

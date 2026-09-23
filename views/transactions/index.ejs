@@ -1,0 +1,53 @@
+<%- include('../layouts/header') %>
+<div class="page-heading">
+    <div><span class="eyebrow">BOOKKEEPING</span><h1>Transactions</h1></div>
+    <a class="btn primary" href="/transactions/create">New Transaction</a>
+</div>
+
+<form class="panel grid cols-3" method="get" action="/transactions">
+    <label>Vyapari
+        <select name="vyapari_id">
+            <option value="">All</option>
+            <% vyaparis.forEach(function(v) { %>
+                <option value="<%= v.id %>" <%= String(filters.vyapari_id || '') === String(v.id) ? 'selected' : '' %>><%= v.vyapari_name %></option>
+            <% }); %>
+        </select>
+    </label>
+    <label>Start <input type="date" name="start_date" value="<%= filters.start_date || '' %>"></label>
+    <label>End <input type="date" name="end_date" value="<%= filters.end_date || '' %>"></label>
+    <div class="form-actions" style="grid-column: 1 / -1;">
+        <button class="btn primary" type="submit">Filter</button>
+        <a class="btn" href="/transactions">Reset</a>
+    </div>
+</form>
+
+<section class="table-wrap" style="margin-top:18px">
+    <table>
+        <thead><tr><th>Date</th><th>Vyapari</th><th>Type</th><th>Product</th><th class="num">Net Wt</th><th class="num">Cash</th><th class="num">RTGS</th><th class="num">Cat 995</th><th>Actions</th></tr></thead>
+        <tbody>
+        <% if (transactions.length === 0) { %>
+            <tr><td colspan="9" style="text-align:center; padding: 20px; color: #64748b;">No transactions found. <a href="/transactions/create" style="color: #176b58; font-weight: bold;">Create a Transaction</a></td></tr>
+        <% } %>
+        <% transactions.forEach(function(row) { %>
+            <tr>
+                <td><%= row.transaction_date %></td>
+                <td><strong><%= row.vyapari_name %></strong></td>
+                <td><%= types[row.transaction_type] || row.transaction_type %></td>
+                <td><%= row.product_name %></td>
+                <td class="num"><%= weight3(row.net_weight) %> g</td>
+                <td class="num">₹ <%= money(row.cash_amount) %></td>
+                <td class="num">₹ <%= money(row.rtgs_amount) %></td>
+                <td class="num"><%= weight3(row.balance_cat_995) %> g</td>
+                <td class="actions">
+                    <a class="btn" href="/transactions/edit?id=<%= row.id %>">Edit</a>
+                    <form method="post" action="/transactions/delete" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this transaction?');">
+                        <input type="hidden" name="id" value="<%= row.id %>">
+                        <button class="btn danger" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        <% }); %>
+        </tbody>
+    </table>
+</section>
+<%- include('../layouts/footer') %>

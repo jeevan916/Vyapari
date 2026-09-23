@@ -1,0 +1,52 @@
+<%- include('../layouts/header') %>
+<div class="page-heading">
+    <div><span class="eyebrow">DIRECTORY</span><h1>Vyaparis</h1></div>
+    <a class="btn success" href="/vyaparis/create">Add Vyapari</a>
+</div>
+
+<%
+let totalCash = balances.reduce((sum, b) => sum + (Number(b.cash) || 0), 0);
+let totalRtgs = balances.reduce((sum, b) => sum + (Number(b.rtgs) || 0), 0);
+let totalGold = balances.reduce((sum, b) => sum + (Number(b.gold_999) || 0), 0);
+%>
+
+<section class="directory-summary">
+    <div><span>Cash</span><strong>₹ <%= money(totalCash) %></strong></div>
+    <div><span>RTGS</span><strong>₹ <%= money(totalRtgs) %></strong></div>
+    <div class="directory-gold"><span>Gold · 999</span><strong><%= weight3(totalGold) %> g</strong></div>
+</section>
+
+<form class="directory-search-form" method="get" action="/vyaparis">
+    <input name="q" placeholder="Search Vyapari or company name..." value="<%= q || '' %>">
+    <button class="btn primary" type="submit">Search</button>
+    <a class="btn link" href="/vyaparis">Clear</a>
+</form>
+
+<section class="directory-table-wrap">
+    <table class="directory-table">
+        <thead><tr><th>Trader</th><th>Cash</th><th>RTGS</th><th>Gold · 999</th><th>Open</th></tr></thead>
+        <tbody>
+        <% if (vyaparis.length === 0) { %>
+            <tr><td colspan="5" style="text-align:center; padding: 20px; color: #64748b;">No vyaparis found.</td></tr>
+        <% } %>
+        <% vyaparis.forEach(function(row) { %>
+            <% const balance = balancesById[row.id] || { cash: 0, rtgs: 0, gold_999: 0 }; %>
+            <tr>
+                <td data-label="Trader">
+                    <strong><%= row.vyapari_name %></strong>
+                    <small><%= row.company_name || row.primary_number || row.city || '' %></small>
+                </td>
+                <td data-label="Cash">₹ <%= money(balance.cash) %></td>
+                <td data-label="RTGS">₹ <%= money(balance.rtgs) %></td>
+                <td data-label="Gold · 999" class="directory-gold-value"><%= weight3(balance.gold_999) %> g</td>
+                <td data-label="Open" class="directory-actions">
+                    <a class="directory-action primary" href="/ledger?vyapari_id=<%= row.id %>">Ledger</a>
+                    <a class="directory-action" href="/vyaparis/edit?id=<%= row.id %>">Edit</a>
+                    <a class="directory-action" href="/products/create?vyapari_id=<%= row.id %>">+ Product</a>
+                </td>
+            </tr>
+        <% }); %>
+        </tbody>
+    </table>
+</section>
+<%- include('../layouts/footer') %>

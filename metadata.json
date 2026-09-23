@@ -1,0 +1,6 @@
+{
+  "name": "Vyapari",
+  "description": "Bullion trading ledger and accounting management application for Vyaparis.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
