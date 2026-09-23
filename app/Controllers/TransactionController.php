@@ -39,7 +39,11 @@ final class TransactionController extends Controller
     public function create(): void
     {
         Auth::requireLogin();
-        $this->view('transactions/form', $this->formData('New Transaction', []));
+        $this->view('transactions/form', $this->formData('New Transaction', [
+            'transaction_type' => $_GET['type'] ?? 'maal-liya',
+            'vyapari_id' => $_GET['vyapari_id'] ?? '',
+            'transaction_date' => date('Y-m-d'),
+        ]));
     }
 
     public function store(): void

@@ -7,7 +7,7 @@
     <label>Vyapari
         <select name="vyapari_id">
             <option value="">Common Product</option>
-            <?php foreach ($vyaparis as $v): ?><option value="<?= e($v['id']) ?>" <?= (($product['vyapari_id'] ?? '') == $v['id']) ? 'selected' : '' ?>><?= e($v['vyapari_name']) ?></option><?php endforeach; ?>
+            <?php foreach ($vyaparis as $v): ?><option value="<?= e($v['id']) ?>" <?= (($product['vyapari_id'] ?? ($_GET['vyapari_id'] ?? '')) == $v['id']) ? 'selected' : '' ?>><?= e($v['vyapari_name']) ?></option><?php endforeach; ?>
         </select>
     </label>
     <label>Product Name <input name="product_name" required value="<?= e($product['product_name'] ?? '') ?>"></label>

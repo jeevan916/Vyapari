@@ -18,22 +18,21 @@ $appName = config('app.name');
 </head>
 <body>
 <?php if (Auth::check()): ?>
-    <aside class="sidebar">
-        <div class="brand"><?= e($appName) ?></div>
+    <header class="navbar">
+        <a class="brand" href="<?= e(url('/')) ?>"><?= e($appName) ?></a>
         <nav>
-            <a href="<?= e(url('/')) ?>">Dashboard</a>
-            <a href="<?= e(url('/vyaparis')) ?>">Vyaparis</a>
+            <a href="<?= e(url('/')) ?>">Home</a>
+            <a href="<?= e(url('/vyaparis')) ?>">Vyapari</a>
             <a href="<?= e(url('/products')) ?>">Products</a>
             <a href="<?= e(url('/transactions')) ?>">Transactions</a>
-            <a href="<?= e(url('/ledger')) ?>">Ledger</a>
         </nav>
         <form method="post" action="<?= e(url('/logout')) ?>">
             <?= csrf_field() ?>
-            <button class="link-button">Logout</button>
+            <button class="logout">Logout (<?= e(Auth::user()['name'] ?? 'Admin') ?>)</button>
         </form>
-    </aside>
+    </header>
 <?php endif; ?>
-<main class="<?= Auth::check() ? 'main' : 'auth-main' ?>">
+<main class="<?= Auth::check() ? 'main container-fluid' : 'auth-main' ?>">
     <?php if ($message = flash('success')): ?><div class="alert success"><?= e($message) ?></div><?php endif; ?>
     <?php if ($message = flash('error')): ?><div class="alert error"><?= e($message) ?></div><?php endif; ?>
     <?php require $viewPath; ?>
