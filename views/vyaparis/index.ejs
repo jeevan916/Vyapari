@@ -16,10 +16,10 @@ let totalGold = balances.reduce((sum, b) => sum + (Number(b.gold_999) || 0), 0);
     <div class="directory-gold"><span>Gold · 999</span><strong><%= weight3(totalGold) %> g</strong></div>
 </section>
 
-<form class="directory-search-form" method="get" action="/vyaparis">
+<form class="directory-search-form" method="get" action="<%= typeof currentPath !== 'undefined' ? currentPath : '/vyaparis' %>">
     <input name="q" placeholder="Search Vyapari or company name..." value="<%= q || '' %>">
     <button class="btn primary" type="submit">Search</button>
-    <a class="btn link" href="/vyaparis">Clear</a>
+    <a class="btn link" href="<%= typeof currentPath !== 'undefined' ? currentPath : '/vyaparis' %>">Clear</a>
 </form>
 
 <section class="directory-table-wrap">

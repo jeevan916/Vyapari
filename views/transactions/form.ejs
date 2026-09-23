@@ -3,7 +3,9 @@
 const isEdit = Boolean(transaction && transaction.id);
 const type = transaction.transaction_type || currentType || 'maal-liya';
 const systemNames = {
-    'fine-diya': 'FINE DIYA',
+    'maal-liya': 'MAAL / FINE LIYA',
+    'maal-return': 'FINE / MAAL DIYA',
+    'fine-diya': 'FINE / MAAL DIYA',
     'cash-diya': 'CASH PAID',
     'bank-payment-diya': 'RTGS DONE',
     'cash-rate-cut': 'CASH CUT FINE JAMA',
@@ -22,6 +24,16 @@ const showBillInputs = ['maal-liya', 'maal-return', 'bank-payment-diya', 'bill-r
     <div><span class="eyebrow">BOOKKEEPING</span><h1><%= title %></h1></div>
 </div>
 
+<!-- Quick Order Type Tabs -->
+<div class="quick-type-tabs no-print" style="margin-bottom: 16px;">
+    <button type="button" class="quick-type-btn <%= type === 'maal-liya' ? 'active' : '' %>" onclick="switchFormType('maal-liya')">🟢 Buy Order (Maal Liya)</button>
+    <button type="button" class="quick-type-btn <%= (type === 'maal-return' || type === 'fine-diya') ? 'active' : '' %>" onclick="switchFormType('maal-return')">🟡 Sell Order (Fine Diya)</button>
+    <button type="button" class="quick-type-btn <%= type === 'cash-diya' ? 'active' : '' %>" onclick="switchFormType('cash-diya')">💵 Cash Paid</button>
+    <button type="button" class="quick-type-btn <%= type === 'bank-payment-diya' ? 'active' : '' %>" onclick="switchFormType('bank-payment-diya')">🏦 RTGS Done</button>
+    <button type="button" class="quick-type-btn <%= type === 'cash-rate-cut' ? 'active' : '' %>" onclick="switchFormType('cash-rate-cut')">📈 Cash Rate Cut</button>
+    <button type="button" class="quick-type-btn <%= type === 'bill-rate-cut' ? 'active' : '' %>" onclick="switchFormType('bill-rate-cut')">📊 Bill Rate Cut</button>
+</div>
+
 <form class="panel transaction-form grid cols-3" method="post" action="<%= isEdit ? '/transactions/update' : '/transactions/store' %>">
     <% if (isEdit) { %><input type="hidden" name="id" value="<%= transaction.id %>"><% } %>
     <input type="hidden" name="product_name" value="<%= productName %>">
@@ -36,8 +48,8 @@ const showBillInputs = ['maal-liya', 'maal-return', 'bank-payment-diya', 'bill-r
             <% }); %>
         </select>
     </label>
-    <label>Type
-        <select name="transaction_type" required data-transaction-type>
+    <label>Order / Trade Type
+        <select name="transaction_type" required data-transaction-type onchange="switchFormType(this.value)">
             <% Object.entries(types).forEach(function([key, label]) { %>
                 <option value="<%= key %>" <%= type === key ? 'selected' : '' %>><%= label %></option>
             <% }); %>
@@ -45,9 +57,9 @@ const showBillInputs = ['maal-liya', 'maal-return', 'bank-payment-diya', 'bill-r
     </label>
 
     <% if (showProduct) { %>
-        <label>Product
+        <label>Product (Optional)
             <select name="product_id" data-product-select>
-                <option value="">Select Product</option>
+                <option value="">Select Product (or leave empty for Fine Gold)</option>
                 <% products.forEach(function(p) { %>
                     <option value="<%= p.id %>" data-name="<%= p.product_name %>" data-rate="<%= p.rate %>" data-purity="<%= p.purity %>" <%= String(transaction.product_id || '') === String(p.id) ? 'selected' : '' %>>
                         <%= p.product_name %><%= p.vyapari_name ? ' - ' + p.vyapari_name : '' %>
@@ -55,20 +67,29 @@ const showBillInputs = ['maal-liya', 'maal-return', 'bank-payment-diya', 'bill-r
                 <% }); %>
             </select>
         </label>
-        <label>Product Name <input name="product_name_visible" data-product-name-visible value="<%= productName %>" readonly></label>
+        <label>Product Name <input name="product_name_visible" data-product-name-visible value="<%= productName %>"></label>
     <% } else { %>
         <label>Product Name <input value="<%= productName %>" readonly></label>
     <% } %>
 
     <% if (!isMoneyOnly) { %>
-        <label>Melting <input type="number" step="any" name="melting" value="<%= transaction.melting ?? '' %>"></label>
+        <label>
+            Melting (Purity %)
+            <input type="number" step="any" name="melting" value="<%= transaction.melting ?? '' %>">
+            <div class="purity-preset-btns no-print">
+                <button type="button" class="purity-preset-btn" onclick="setPurity(99.5)">99.50% Bullion</button>
+                <button type="button" class="purity-preset-btn" onclick="setPurity(99.99)">99.99% Fine</button>
+                <button type="button" class="purity-preset-btn" onclick="setPurity(91.6)">91.60% 22k</button>
+                <button type="button" class="purity-preset-btn" onclick="setPurity(75.0)">75.00% 18k</button>
+            </div>
+        </label>
         <% if (['maal-liya', 'maal-return'].includes(type)) { %>
-            <label>Wstg <input type="number" step="any" name="rate" value="<%= transaction.rate ?? '' %>"></label>
+            <label>Wastage / Labour % <input type="number" step="any" name="rate" value="<%= transaction.rate ?? '' %>"></label>
         <% } else { %>
             <input type="hidden" name="rate" value="0">
         <% } %>
-        <label>Gr.Wt <input type="number" step="any" name="gross_weight" data-gross-weight value="<%= transaction.gross_weight ?? '' %>"></label>
-        <label>Net.Wt <input type="number" step="any" name="net_weight" data-net-weight value="<%= transaction.net_weight ?? '' %>"></label>
+        <label>Gr.Wt (g) <input type="number" step="any" name="gross_weight" data-gross-weight value="<%= transaction.gross_weight ?? '' %>"></label>
+        <label>Net.Wt (g) <input type="number" step="any" name="net_weight" data-net-weight value="<%= transaction.net_weight ?? '' %>"></label>
     <% } else { %>
         <input type="hidden" name="melting" value="0"><input type="hidden" name="rate" value="0"><input type="hidden" name="gross_weight" value="0"><input type="hidden" name="net_weight" value="0">
     <% } %>
@@ -109,11 +130,62 @@ const showBillInputs = ['maal-liya', 'maal-return', 'bank-payment-diya', 'bill-r
         <label>Opening Cat 995 <input type="number" step="any" name="balance_cat_995" value="<%= transaction.balance_cat_995 ?? '0' %>"></label>
     <% } %>
 
+    <!-- Real-time Bullion Calculation Preview -->
+    <div class="card live-calc-preview" style="grid-column: 1 / -1; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; margin: 6px 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="font-size: 0.82rem; color: #1e293b;">🧮 Live Calculation Breakdown</strong>
+            <span id="preview-impact-badge" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-weight: 700;">Debit (Liya)</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.75rem;">
+            <div style="background:#fff; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                <span style="color:#64748b; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">Pure Gold 999</span>
+                <strong id="preview-purity-999" style="font-size: 0.92rem; color:#0f172a;">0.000 g</strong>
+                <small style="color:#94a3b8; display:block; font-size: 0.6rem;">((Melt + Wstg) × Net) / 100</small>
+            </div>
+            <div style="background:#fff; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                <span style="color:#64748b; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">Standard Fine 995</span>
+                <strong id="preview-purity-995" style="font-size: 0.92rem; color:#b45309;">0.000 g</strong>
+                <small style="color:#94a3b8; display:block; font-size: 0.6rem;">Pure 999 ÷ 0.995</small>
+            </div>
+            <div style="background:#fff; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                <span style="color:#64748b; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">Cash / Gram Bhav</span>
+                <strong id="preview-cash-bhav" style="font-size: 0.92rem; color:#15803d;">₹ 0.00</strong>
+                <small style="color:#94a3b8; display:block; font-size: 0.6rem;">10g Rate ÷ 10</small>
+            </div>
+            <div style="background:#fff; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                <span style="color:#64748b; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">GST Bhav / Gram</span>
+                <strong id="preview-gst-bhav" style="font-size: 0.92rem; color:#4338ca;">₹ 0.00</strong>
+                <small style="color:#94a3b8; display:block; font-size: 0.6rem;">Rate/10 + 3% GST</small>
+            </div>
+            <div style="background:#fff; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                <span style="color:#64748b; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">Cash Impact</span>
+                <strong id="preview-cash-amount" style="font-size: 0.92rem; color:#047857;">₹ 0.00</strong>
+                <small style="color:#94a3b8; display:block; font-size: 0.6rem;">Amount in ₹</small>
+            </div>
+            <div style="background:#fff; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                <span style="color:#64748b; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">RTGS Impact</span>
+                <strong id="preview-rtgs-amount" style="font-size: 0.92rem; color:#6366f1;">₹ 0.00</strong>
+                <small style="color:#94a3b8; display:block; font-size: 0.6rem;">Amount in ₹</small>
+            </div>
+            <div style="background:#fff; padding:7px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                <span style="color:#64748b; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">Gold Ledger Balance</span>
+                <strong id="preview-metal-bal" style="font-size: 0.92rem; color:#0369a1;">0.000 g</strong>
+                <small style="color:#94a3b8; display:block; font-size: 0.6rem;">Cat 995 Fine Gold</small>
+            </div>
+            <div style="background:#ecfdf5; padding:7px 9px; border-radius:6px; border:1px solid #a7f3d0;">
+                <span style="color:#065f46; font-weight:700; display:block; font-size: 0.62rem; text-transform:uppercase;">Total Trade Valuation</span>
+                <strong id="preview-total-trade-amt" style="font-size: 0.95rem; color:#047857;">₹ 0.00</strong>
+                <small style="color:#059669; display:block; font-size: 0.6rem;">Trade settlement value</small>
+            </div>
+        </div>
+    </div>
+
     <label style="grid-column:1/-1">Notes <textarea name="notes"><%= transaction.notes || '' %></textarea></label>
 
     <div class="calc-note" style="grid-column:1/-1">
-        <% if (isRateCut) { %>Rate cut saves two ledger rows: fine diya plus cash/bill jama.<% } %>
-        <% if (isFineOnly) { %>Fine diya stores rate and money fields as zero, with gold balance negative.<% } %>
+        <% if (isRateCut) { %>Rate cut locks the bullion rate: fine gold is settled while creating a monetary liability.<% } %>
+        <% if (type === 'maal-return' || isFineOnly) { %>Fine / Maal Diya records pure gold or goods given/returned to the trader, reducing the metal liability.<% } %>
+        <% if (type === 'maal-liya') { %>Maal / Fine Liya records incoming jewellery or fine gold received from the trader.<% } %>
         <% if (isMoneyOnly) { %>This entry affects only <%= type === 'cash-diya' ? 'cash' : 'RTGS' %> balance.<% } %>
     </div>
 
@@ -122,4 +194,182 @@ const showBillInputs = ['maal-liya', 'maal-return', 'bank-payment-diya', 'bill-r
         <a class="btn" href="<%= (transaction.vyapari_id || selectedVyapariId) ? '/ledger?vyapari_id=' + (transaction.vyapari_id || selectedVyapariId) : '/transactions' %>">Close</a>
     </div>
 </form>
+
+<script>
+function updateFormPreview() {
+    const typeSelect = document.querySelector('[data-transaction-type]');
+    const type = typeSelect ? typeSelect.value : 'maal-liya';
+    
+    const getVal = (name) => {
+        const el = document.querySelector(`[name="${name}"]`);
+        return el ? (parseFloat(el.value) || 0) : 0;
+    };
+    
+    const net = getVal('net_weight');
+    const meltingInput = document.querySelector('[name="melting"]');
+    let melting = meltingInput ? parseFloat(meltingInput.value) : 0;
+    if (isNaN(melting) || melting <= 0) {
+        if (['maal-return', 'fine-diya', 'cash-rate-cut', 'bill-rate-cut'].includes(type)) {
+            melting = 99.5;
+        } else {
+            melting = 0;
+        }
+    }
+    const rate = ['maal-return', 'fine-diya', 'cash-rate-cut', 'bill-rate-cut'].includes(type) && !document.querySelector('[data-product-select]')?.value ? 0 : getVal('rate');
+    const cashCharge = getVal('cash_charge_amount');
+    const billCharge = getVal('bill_charge_amount');
+    const bill995 = getVal('ten_gram_bill_995_rate');
+    const cash995 = getVal('ten_gram_cash_995_rate');
+    
+    const purity999 = ((melting + rate) * net) / 100;
+    const purity995 = purity999 / 0.995;
+    const cashBhav = cash995 > 0 ? cash995 / 10 : 0;
+    const gstBhav = bill995 > 0 ? (bill995 * 1.03) / 10 : 0;
+    
+    let cashAmount = 0;
+    let rtgsAmount = 0;
+    let balanceCat995 = 0;
+    let badgeText = 'Debit (Liya)';
+    let badgeBg = '#e0f2fe';
+    let badgeColor = '#0369a1';
+    
+    if (type === 'maal-liya') {
+        badgeText = 'Debit (Liya) — Maal/Fine Received';
+        if (cashBhav > 0 && gstBhav === 0) {
+            cashAmount = cashBhav * purity995 + cashCharge;
+            rtgsAmount = billCharge;
+            balanceCat995 = 0;
+        } else if (gstBhav > 0 && cashBhav === 0) {
+            rtgsAmount = gstBhav * purity995 + billCharge;
+            cashAmount = cashCharge;
+            balanceCat995 = 0;
+        } else if (cashBhav > 0 && gstBhav > 0) {
+            rtgsAmount = gstBhav * purity995 + billCharge;
+            cashAmount = cashCharge;
+            balanceCat995 = 0;
+        } else {
+            cashAmount = cashCharge;
+            rtgsAmount = billCharge;
+            balanceCat995 = purity995;
+        }
+    } else if (type === 'maal-return' || type === 'fine-diya') {
+        badgeText = 'Credit (Diya) — Fine/Maal Given';
+        badgeBg = '#fef3c7';
+        badgeColor = '#b45309';
+        if (cashBhav > 0 && gstBhav === 0) {
+            cashAmount = -(cashBhav * purity995 + cashCharge);
+            rtgsAmount = -billCharge;
+            balanceCat995 = 0;
+        } else if (gstBhav > 0 && cashBhav === 0) {
+            rtgsAmount = -(gstBhav * purity995 + billCharge);
+            cashAmount = -cashCharge;
+            balanceCat995 = 0;
+        } else if (cashBhav > 0 && gstBhav > 0) {
+            rtgsAmount = -(gstBhav * purity995 + billCharge);
+            cashAmount = -cashCharge;
+            balanceCat995 = 0;
+        } else {
+            cashAmount = -cashCharge;
+            rtgsAmount = -billCharge;
+            balanceCat995 = -purity995;
+        }
+    } else if (type === 'cash-diya') {
+        badgeText = 'Credit (Diya) — Cash Paid Out';
+        badgeBg = '#dcfce7';
+        badgeColor = '#15803d';
+        cashAmount = -cashCharge;
+    } else if (type === 'bank-payment-diya') {
+        badgeText = 'Credit (Diya) — RTGS Paid Out';
+        badgeBg = '#ede9fe';
+        badgeColor = '#6d28d9';
+        rtgsAmount = -billCharge;
+    } else if (type === 'cash-rate-cut') {
+        badgeText = 'Rate Cut (Cash Due + Gold Settled)';
+        badgeBg = '#e0f2fe';
+        badgeColor = '#0369a1';
+        cashAmount = cashBhav * purity995 + cashCharge;
+        balanceCat995 = -purity995;
+    } else if (type === 'bill-rate-cut') {
+        badgeText = 'Rate Cut (RTGS Due + Gold Settled)';
+        badgeBg = '#ede9fe';
+        badgeColor = '#6d28d9';
+        rtgsAmount = gstBhav * purity995 + billCharge;
+        balanceCat995 = -purity995;
+    } else if (type === 'opening-balance') {
+        const liyaDiyaEl = document.querySelector('[name="liya_diya"]');
+        const isDiya = liyaDiyaEl && liyaDiyaEl.value === 'diya';
+        const mult = isDiya ? -1 : 1;
+        cashAmount = getVal('cash_amount') * mult;
+        rtgsAmount = getVal('rtgs_amount') * mult;
+        balanceCat995 = getVal('balance_cat_995') * mult;
+        badgeText = isDiya ? 'Credit (Diya) Opening' : 'Debit (Liya) Opening';
+    }
+
+    const fmtMoney = (n) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtWeight = (n) => Number(n).toFixed(3);
+
+    const el999 = document.getElementById('preview-purity-999');
+    const el995 = document.getElementById('preview-purity-995');
+    const elCashBhav = document.getElementById('preview-cash-bhav');
+    const elGstBhav = document.getElementById('preview-gst-bhav');
+    const elCashAmt = document.getElementById('preview-cash-amount');
+    const elRtgsAmt = document.getElementById('preview-rtgs-amount');
+    const elMetalBal = document.getElementById('preview-metal-bal');
+    const elTotalTradeAmt = document.getElementById('preview-total-trade-amt');
+    const elBadge = document.getElementById('preview-impact-badge');
+
+    let totalTradeVal = Math.abs(cashAmount) + Math.abs(rtgsAmount);
+    if (totalTradeVal === 0 && (cashBhav > 0 || gstBhav > 0)) {
+        totalTradeVal = (gstBhav > 0 ? gstBhav : cashBhav) * Math.abs(purity995);
+    }
+
+    if (el999) el999.innerText = fmtWeight(purity999) + ' g';
+    if (el995) el995.innerText = fmtWeight(purity995) + ' g';
+    if (elCashBhav) elCashBhav.innerText = '₹ ' + fmtMoney(cashBhav);
+    if (elGstBhav) elGstBhav.innerText = '₹ ' + fmtMoney(gstBhav);
+    if (elCashAmt) elCashAmt.innerText = '₹ ' + fmtMoney(cashAmount);
+    if (elRtgsAmt) elRtgsAmt.innerText = '₹ ' + fmtMoney(rtgsAmount);
+    if (elMetalBal) elMetalBal.innerText = fmtWeight(balanceCat995) + ' g';
+    if (elTotalTradeAmt) elTotalTradeAmt.innerText = '₹ ' + fmtMoney(totalTradeVal);
+    if (elBadge) {
+        elBadge.innerText = badgeText;
+        elBadge.style.background = badgeBg;
+        elBadge.style.color = badgeColor;
+    }
+}
+
+function setPurity(val) {
+    const input = document.querySelector('[name="melting"]');
+    if (input) {
+        input.value = val;
+        updateFormPreview();
+    }
+}
+
+function switchFormType(newType) {
+    const isEdit = <%= isEdit ? 'true' : 'false' %>;
+    const vyapariId = document.querySelector('[name="vyapari_id"]')?.value || '<%= selectedVyapariId || "" %>';
+    const txId = '<%= transaction.id || "" %>';
+    if (isEdit) {
+        // Just change type select
+        const sel = document.querySelector('[data-transaction-type]');
+        if (sel) {
+            sel.value = newType;
+            updateFormPreview();
+        }
+    } else {
+        // Navigate to create with specified type to ensure correct conditional fields render
+        window.location.href = '/transactions/create?type=' + encodeURIComponent(newType) + (vyapariId ? '&vyapari_id=' + encodeURIComponent(vyapariId) : '');
+    }
+}
+
+// Bind live listeners on inputs
+document.addEventListener('DOMContentLoaded', updateFormPreview);
+document.querySelectorAll('.transaction-form input, .transaction-form select').forEach(el => {
+    el.addEventListener('input', updateFormPreview);
+    el.addEventListener('change', updateFormPreview);
+});
+updateFormPreview();
+</script>
+
 <%- include('../layouts/footer') %>

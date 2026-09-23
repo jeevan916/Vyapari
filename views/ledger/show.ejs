@@ -1,24 +1,23 @@
 <%- include('../layouts/header') %>
 <%
 const styles = {
-    'maal-liya': { class: 'type-maal-liya', name: 'Maal liya' },
-    'maal-return': { class: 'type-maal-return', name: 'Maal return' },
-    'fine-diya': { class: 'type-fine-diya', name: 'Fine diya' },
-    'cash-diya': { class: 'type-cash-diya', name: 'Cash diya' },
-    'bank-payment-diya': { class: 'type-bank-payment-diya', name: 'Bank payment' },
-    'cash-rate-cut': { class: 'type-cash-rate-cut', name: 'Cash rate cut' },
-    'bill-rate-cut': { class: 'type-bill-rate-cut', name: 'Bill rate cut' },
-    'opening-balance': { class: 'type-other', name: 'Opening balance' }
+    'maal-liya': { class: 'type-maal-liya', name: 'Maal / Fine Liya' },
+    'maal-return': { class: 'type-maal-return', name: 'Fine / Maal Diya' },
+    'fine-diya': { class: 'type-maal-return', name: 'Fine / Maal Diya' },
+    'cash-diya': { class: 'type-cash-diya', name: 'Cash Diya' },
+    'bank-payment-diya': { class: 'type-bank-payment-diya', name: 'Bank Payment' },
+    'cash-rate-cut': { class: 'type-cash-rate-cut', name: 'Cash Rate Cut' },
+    'bill-rate-cut': { class: 'type-bill-rate-cut', name: 'Bill Rate Cut' },
+    'opening-balance': { class: 'type-other', name: 'Opening Balance' }
 };
 
 const quick = [
-    ['Maal liya', 'maal-liya', 'primary'],
-    ['Maal return', 'maal-return', ''],
-    ['Fine diya', 'fine-diya', 'warning'],
-    ['Cash diya', 'cash-diya', 'success'],
-    ['Bank payment', 'bank-payment-diya', 'danger'],
-    ['Cash rate cut', 'cash-rate-cut', ''],
-    ['Bill rate cut', 'bill-rate-cut', '']
+    ['Maal / Fine Liya', 'maal-liya', 'primary'],
+    ['Fine / Maal Diya', 'maal-return', 'warning'],
+    ['Cash Diya', 'cash-diya', 'success'],
+    ['Bank Payment', 'bank-payment-diya', 'danger'],
+    ['Cash Rate Cut', 'cash-rate-cut', ''],
+    ['Bill Rate Cut', 'bill-rate-cut', '']
 ];
 %>
 
@@ -26,7 +25,7 @@ const quick = [
     <header class="ledger-header">
         <div class="ledger-controls">
             <a class="ledger-back" href="/vyaparis">&lsaquo; Traders</a>
-            <button class="ledger-print" type="button" onclick="window.print()">Ledger view</button>
+            <button class="ledger-print" id="ledger-toggle-btn" type="button" onclick="toggleLedgerView()">Ledger view</button>
         </div>
         <h1><%= currentVyapari ? currentVyapari.vyapari_name : 'Ledger' %></h1>
         <p><%= currentVyapari ? (currentVyapari.company_name || '') : '' %></p>
@@ -43,8 +42,26 @@ const quick = [
             </label>
             <label>From <input type="date" name="start_date" value="<%= start || '' %>"></label>
             <label>To <input type="date" name="end_date" value="<%= end || '' %>"></label>
+            <label>Filter Type
+                <select name="type" onchange="this.form.submit()">
+                    <option value="">All Orders / Types</option>
+                    <option value="maal-liya" <%= (typeFilter === 'maal-liya') ? 'selected' : '' %>>🟢 Maal / Fine Liya (Buy)</option>
+                    <option value="maal-return" <%= (typeFilter === 'maal-return' || typeFilter === 'fine-diya') ? 'selected' : '' %>>🟡 Fine / Maal Diya (Sell)</option>
+                    <option value="cash-diya" <%= (typeFilter === 'cash-diya') ? 'selected' : '' %>>💵 Cash Diya</option>
+                    <option value="bank-payment-diya" <%= (typeFilter === 'bank-payment-diya') ? 'selected' : '' %>>🏦 Bank Payment</option>
+                    <option value="cash-rate-cut" <%= (typeFilter === 'cash-rate-cut') ? 'selected' : '' %>>📈 Cash Rate Cut</option>
+                    <option value="bill-rate-cut" <%= (typeFilter === 'bill-rate-cut') ? 'selected' : '' %>>📊 Bill Rate Cut</option>
+                    <option value="rate-cut" <%= (typeFilter === 'rate-cut') ? 'selected' : '' %>>⚡ Any Rate Cut</option>
+                </select>
+            </label>
             <div class="compact-filter-submit"><button class="btn primary" type="submit">Apply</button></div>
         </form>
+        <% if (typeFilter) { %>
+            <div style="margin-top:8px; display:flex; align-items:center; justify-content:space-between; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:6px 10px; font-size:0.75rem; color:#0369a1;">
+                <span>Showing filtered transactions: <strong><%= styles[typeFilter]?.name || typeFilter %></strong></span>
+                <a href="/ledger?vyapari_id=<%= vyapariId %><%= start ? '&start_date=' + start : '' %><%= end ? '&end_date=' + end : '' %>" style="color:#0284c7; font-weight:700; text-decoration:underline;">Clear Type Filter</a>
+            </div>
+        <% } %>
     </section>
 
     <section class="balance-grid">
@@ -79,8 +96,322 @@ const quick = [
         <div><span>Given · 999</span><strong><%= weight3(diya.gold_999) %> g</strong></div>
     </section>
 
-    <section class="entry-list">
-        <h2>Transactions</h2>
+    <!-- Ledger View Switcher -->
+    <div class="ledger-view-switcher no-print">
+        <button type="button" class="view-btn active" id="btn-view-t" onclick="switchView('t-ledger')">
+            ⚖️ T-Style Ledger (CR / DR)
+        </button>
+        <button type="button" class="view-btn" id="btn-view-card" onclick="switchView('card')">
+            📱 Card View
+        </button>
+        <button type="button" class="view-btn" id="btn-view-table" onclick="switchView('table')">
+            📋 Statement Table
+        </button>
+    </div>
+
+    <%
+    // Prepare mathematically balanced data for T-Style Ledger (CR / DR)
+    // In T-Account double-entry accounting:
+    // DR Side: Receipts / Inflows / Goods Received / Rate Cut Money Due / Opening Dr
+    // CR Side: Payments / Outflows / Goods Returned / Rate Cut Gold Out / Fine Diya / Opening Cr
+
+    const openGold = Number(opening.gold_999) || 0;
+    const openCash = Number(opening.cash) || 0;
+    const openRtgs = Number(opening.rtgs) || 0;
+
+    const hasDrOpening = (openGold > 0 || openCash > 0 || openRtgs > 0);
+    const hasCrOpening = (openGold < 0 || openCash < 0 || openRtgs < 0);
+
+    // Build Dr Side rows
+    const drRows = [];
+    if (hasDrOpening) {
+        drRows.push({
+            date: start || 'Opening',
+            particulars: 'To Balance b/d',
+            notes: 'Opening Debit Balance',
+            gold999: openGold > 0 ? openGold : 0,
+            cash: openCash > 0 ? openCash : 0,
+            rtgs: openRtgs > 0 ? openRtgs : 0,
+            isOpening: true,
+        });
+    }
+
+    // Build Cr Side rows
+    const crRows = [];
+    if (hasCrOpening) {
+        crRows.push({
+            date: start || 'Opening',
+            particulars: 'By Balance b/d',
+            notes: 'Opening Credit Balance',
+            gold999: openGold < 0 ? Math.abs(openGold) : 0,
+            cash: openCash < 0 ? Math.abs(openCash) : 0,
+            rtgs: openRtgs < 0 ? Math.abs(openRtgs) : 0,
+            isOpening: true,
+        });
+    }
+
+    // Sort all transactions chronologically (oldest to newest for T-account)
+    const sortedTx = (transactions || []).slice().sort((a,b) => a.transaction_date.localeCompare(b.transaction_date) || a.id - b.id);
+
+    sortedTx.forEach(function(row) {
+        const style = styles[row.transaction_type] || { class: 'type-other', name: 'Transaction' };
+        const goldWeight = Math.abs((Number(row.balance_cat_995) || 0) * 0.995);
+        const cashVal = Math.abs(Number(row.cash_amount) || 0);
+        const rtgsVal = Math.abs(Number(row.rtgs_amount) || 0);
+
+        if (row.transaction_type === 'cash-rate-cut') {
+            // Cash Rate Cut:
+            // 1) Cash amount is created on Dr side (payable to trader)
+            drRows.push({
+                date: row.transaction_date,
+                particulars: 'To Cash Cut Jama',
+                notes: row.notes || ('Rate: ₹' + money(row.ten_gram_cash_995_rate) + '/10g on ' + weight3(goldWeight) + 'g'),
+                gold999: 0,
+                cash: cashVal,
+                rtgs: 0,
+            });
+            // 2) Gold is deducted/given on Cr side (metal settled)
+            crRows.push({
+                date: row.transaction_date,
+                particulars: 'By Cash Cut Fine Diya',
+                notes: row.notes || ('Fine gold settled @ ₹' + money(row.cash_bhav) + '/g'),
+                gold999: goldWeight,
+                cash: 0,
+                rtgs: 0,
+            });
+        } else if (row.transaction_type === 'bill-rate-cut') {
+            // Bill Rate Cut:
+            // 1) RTGS amount is created on Dr side (payable to trader)
+            drRows.push({
+                date: row.transaction_date,
+                particulars: 'To Bill Cut Jama',
+                notes: row.notes || ('Rate: ₹' + money(row.ten_gram_bill_995_rate) + '/10g + 3% GST on ' + weight3(goldWeight) + 'g'),
+                gold999: 0,
+                cash: 0,
+                rtgs: rtgsVal,
+            });
+            // 2) Gold is deducted/given on Cr side (metal settled)
+            crRows.push({
+                date: row.transaction_date,
+                particulars: 'By Bill Cut Fine Diya',
+                notes: row.notes || ('Fine gold settled @ ₹' + money(row.gst_bhav) + '/g'),
+                gold999: goldWeight,
+                cash: 0,
+                rtgs: 0,
+            });
+        } else if (row.liya_diya === 'liya') {
+            // Maal / Fine Liya
+            const isGenericProduct = !row.product_name ||
+                ['MAAL / FINE LIYA', 'FINE / MAAL DIYA', 'FINE DIYA', 'MAAL LIYA', 'MAAL RETURN'].includes(row.product_name.toUpperCase()) ||
+                row.product_name.trim().toLowerCase() === style.name.trim().toLowerCase();
+            const productSuffix = isGenericProduct ? '' : ' (' + row.product_name + ')';
+            drRows.push({
+                date: row.transaction_date,
+                particulars: 'To ' + style.name + productSuffix,
+                notes: row.notes || '',
+                gold999: Number(row.balance_cat_995) > 0 ? goldWeight : 0,
+                cash: cashVal,
+                rtgs: rtgsVal,
+            });
+        } else {
+            // Fine / Maal Diya, Cash Diya, Bank Payment Diya
+            const isGenericProduct = !row.product_name ||
+                ['MAAL / FINE LIYA', 'FINE / MAAL DIYA', 'FINE DIYA', 'MAAL LIYA', 'MAAL RETURN'].includes(row.product_name.toUpperCase()) ||
+                row.product_name.trim().toLowerCase() === style.name.trim().toLowerCase();
+            const productSuffix = isGenericProduct ? '' : ' (' + row.product_name + ')';
+            crRows.push({
+                date: row.transaction_date,
+                particulars: 'By ' + style.name + productSuffix,
+                notes: row.notes || '',
+                gold999: Number(row.balance_cat_995) !== 0 ? goldWeight : 0,
+                cash: cashVal,
+                rtgs: rtgsVal,
+            });
+        }
+    });
+
+    // Calculate Dr Subtotals
+    let subtotalDrGold = 0;
+    let subtotalDrCash = 0;
+    let subtotalDrRtgs = 0;
+    drRows.forEach(r => {
+        subtotalDrGold += (r.gold999 || 0);
+        subtotalDrCash += (r.cash || 0);
+        subtotalDrRtgs += (r.rtgs || 0);
+    });
+    subtotalDrGold = Math.round(subtotalDrGold * 1000) / 1000;
+    subtotalDrCash = Math.round(subtotalDrCash * 100) / 100;
+    subtotalDrRtgs = Math.round(subtotalDrRtgs * 100) / 100;
+
+    // Calculate Cr Subtotals
+    let subtotalCrGold = 0;
+    let subtotalCrCash = 0;
+    let subtotalCrRtgs = 0;
+    crRows.forEach(r => {
+        subtotalCrGold += (r.gold999 || 0);
+        subtotalCrCash += (r.cash || 0);
+        subtotalCrRtgs += (r.rtgs || 0);
+    });
+    subtotalCrGold = Math.round(subtotalCrGold * 1000) / 1000;
+    subtotalCrCash = Math.round(subtotalCrCash * 100) / 100;
+    subtotalCrRtgs = Math.round(subtotalCrRtgs * 100) / 100;
+
+    // Balance c/d (Differences)
+    const diffGold = Math.round((subtotalDrGold - subtotalCrGold) * 1000) / 1000;
+    const diffCash = Math.round((subtotalDrCash - subtotalCrCash) * 100) / 100;
+    const diffRtgs = Math.round((subtotalDrRtgs - subtotalCrRtgs) * 100) / 100;
+
+    // Grand balanced totals (Equal on both sides)
+    const grandGold = Math.max(subtotalDrGold, subtotalCrGold);
+    const grandCash = Math.max(subtotalDrCash, subtotalCrCash);
+    const grandRtgs = Math.max(subtotalDrRtgs, subtotalCrRtgs);
+    %>
+
+    <!-- 1. T-STYLE LEDGER VIEW (CR / DR SIDES) -->
+    <section class="t-ledger-wrap" id="ledger-t-view">
+        <div class="t-ledger-titlebar">
+            <div>
+                <h2>⚖️ <%= currentVyapari ? currentVyapari.vyapari_name : 'Vyapari' %> &mdash; T-Style Ledger Account</h2>
+                <span><%= currentVyapari ? (currentVyapari.company_name || '') : '' %> &bull; Period: <%= start || 'Beginning' %> to <%= end || 'Today' %></span>
+            </div>
+            <div class="no-print">
+                <button type="button" class="btn" onclick="tryPrint()" style="padding: 4px 10px; font-size: 0.72rem; background: #fff; color: #0f2942;">🖨️ Print T-Ledger</button>
+            </div>
+        </div>
+
+        <div class="t-ledger-grid">
+            <!-- DR SIDE (DEBIT / LIYA / JAMA) -->
+            <div class="t-side dr">
+                <div class="t-side-header">
+                    <span>Dr. (Debit / Liya / Jama)</span>
+                    <small style="font-weight: 700; text-transform: none;">Receipts &amp; Purchases</small>
+                </div>
+                <table class="t-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 72px;">Date</th>
+                            <th>Particulars</th>
+                            <th class="num" style="width: 76px;">Gold 999</th>
+                            <th class="num" style="width: 80px;">Cash</th>
+                            <th class="num" style="width: 80px;">RTGS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (drRows.length === 0) { %>
+                            <tr><td colspan="5" style="text-align:center; padding: 20px; color: #94a3b8;">No Debit (Liya) entries</td></tr>
+                        <% } %>
+
+                        <% drRows.forEach(function(row) { %>
+                            <tr <%= row.isOpening ? 'style="background: #f0f7ff;"' : '' %>>
+                                <td><%= row.date %></td>
+                                <td>
+                                    <strong><%= row.particulars %></strong>
+                                    <% if (row.notes) { %><br><small style="color:#64748b;"><%= row.notes %></small><% } %>
+                                </td>
+                                <td class="num directory-gold-value"><%= row.gold999 > 0 ? weight3(row.gold999) + ' g' : '-' %></td>
+                                <td class="num"><%= row.cash > 0 ? '₹ ' + money(row.cash) : '-' %></td>
+                                <td class="num"><%= row.rtgs > 0 ? '₹ ' + money(row.rtgs) : '-' %></td>
+                            </tr>
+                        <% }); %>
+
+                        <% if (diffGold < 0 || diffCash < 0 || diffRtgs < 0) { %>
+                            <!-- Balancing figure if Cr > Dr -->
+                            <tr class="t-row-balance">
+                                <td><%= end || 'Closing' %></td>
+                                <td><strong>To Balance c/d</strong><br><small>Credit Balance Carried Down</small></td>
+                                <td class="num"><%= diffGold < 0 ? weight3(Math.abs(diffGold)) + ' g' : '-' %></td>
+                                <td class="num"><%= diffCash < 0 ? '₹ ' + money(Math.abs(diffCash)) : '-' %></td>
+                                <td class="num"><%= diffRtgs < 0 ? '₹ ' + money(Math.abs(diffRtgs)) : '-' %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                    <tfoot class="t-table-footer">
+                        <tr class="t-row-total">
+                            <td colspan="2"><strong>Subtotal (Dr)</strong></td>
+                            <td class="num"><%= weight3(subtotalDrGold) %> g</td>
+                            <td class="num">₹ <%= money(subtotalDrCash) %></td>
+                            <td class="num">₹ <%= money(subtotalDrRtgs) %></td>
+                        </tr>
+                        <tr class="t-row-grand">
+                            <td colspan="2"><strong>Total Dr</strong></td>
+                            <td class="num"><%= weight3(grandGold) %> g</td>
+                            <td class="num">₹ <%= money(grandCash) %></td>
+                            <td class="num">₹ <%= money(grandRtgs) %></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- CR SIDE (CREDIT / DIYA / UDHAAR) -->
+            <div class="t-side cr">
+                <div class="t-side-header">
+                    <span>Cr. (Credit / Diya / Udhaar)</span>
+                    <small style="font-weight: 700; text-transform: none;">Payments &amp; Fine Given</small>
+                </div>
+                <table class="t-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 72px;">Date</th>
+                            <th>Particulars</th>
+                            <th class="num" style="width: 76px;">Gold 999</th>
+                            <th class="num" style="width: 80px;">Cash</th>
+                            <th class="num" style="width: 80px;">RTGS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (crRows.length === 0) { %>
+                            <tr><td colspan="5" style="text-align:center; padding: 20px; color: #94a3b8;">No Credit (Diya) entries</td></tr>
+                        <% } %>
+
+                        <% crRows.forEach(function(row) { %>
+                            <tr <%= row.isOpening ? 'style="background: #fffcf0;"' : '' %>>
+                                <td><%= row.date %></td>
+                                <td>
+                                    <strong><%= row.particulars %></strong>
+                                    <% if (row.notes) { %><br><small style="color:#64748b;"><%= row.notes %></small><% } %>
+                                </td>
+                                <td class="num directory-gold-value"><%= row.gold999 > 0 ? weight3(row.gold999) + ' g' : '-' %></td>
+                                <td class="num"><%= row.cash > 0 ? '₹ ' + money(row.cash) : '-' %></td>
+                                <td class="num"><%= row.rtgs > 0 ? '₹ ' + money(row.rtgs) : '-' %></td>
+                            </tr>
+                        <% }); %>
+
+                        <% if (diffGold > 0 || diffCash > 0 || diffRtgs > 0) { %>
+                            <!-- Balancing figure if Dr > Cr -->
+                            <tr class="t-row-balance">
+                                <td><%= end || 'Closing' %></td>
+                                <td><strong>By Balance c/d</strong><br><small>Debit Balance Carried Down</small></td>
+                                <td class="num"><%= diffGold > 0 ? weight3(diffGold) + ' g' : '-' %></td>
+                                <td class="num"><%= diffCash > 0 ? '₹ ' + money(diffCash) : '-' %></td>
+                                <td class="num"><%= diffRtgs > 0 ? '₹ ' + money(diffRtgs) : '-' %></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                    <tfoot class="t-table-footer">
+                        <tr class="t-row-total">
+                            <td colspan="2"><strong>Subtotal (Cr)</strong></td>
+                            <td class="num"><%= weight3(subtotalCrGold) %> g</td>
+                            <td class="num">₹ <%= money(subtotalCrCash) %></td>
+                            <td class="num">₹ <%= money(subtotalCrRtgs) %></td>
+                        </tr>
+                        <tr class="t-row-grand">
+                            <td colspan="2"><strong>Total Cr</strong></td>
+                            <td class="num"><%= weight3(grandGold) %> g</td>
+                            <td class="num">₹ <%= money(grandCash) %></td>
+                            <td class="num">₹ <%= money(grandRtgs) %></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. MOBILE / CARD FEED VIEW -->
+    <section class="entry-list" id="ledger-card-view" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.65rem;">
+            <h2 style="margin:0;">Transactions Feed</h2>
+            <button type="button" class="btn" onclick="switchView('t-ledger')" style="padding: 4px 10px; font-size: 0.72rem;">⚖️ T-Ledger view</button>
+        </div>
         <% if (!transactions || transactions.length === 0) { %>
             <div class="empty-ledger">No transactions for this period.</div>
         <% } %>
@@ -132,6 +463,132 @@ const quick = [
             </article>
         <% }); %>
     </section>
+
+    <!-- 3. COMPREHENSIVE SEQUENTIAL TABLE VIEW -->
+    <section class="card table-wrap" id="ledger-table-view" style="display:none; margin-bottom: 1.5rem; overflow-x: auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; padding: 4px 6px;">
+            <h2 style="margin:0; font-size: 1rem; font-weight: 800;">Ledger Statement &bull; <%= currentVyapari ? currentVyapari.vyapari_name : '' %></h2>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn primary" onclick="tryPrint()" style="padding: 4px 10px; font-size: 0.72rem;">Print Statement</button>
+                <button type="button" class="btn" onclick="switchView('t-ledger')" style="padding: 4px 10px; font-size: 0.72rem;">⚖️ T-Ledger</button>
+            </div>
+        </div>
+        <table class="directory-table" style="font-size: 0.75rem; width: 100%;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Product</th>
+                    <th class="num">Net.Wt</th>
+                    <th class="num">Melt%</th>
+                    <th class="num">Wstg%</th>
+                    <th class="num">Gold 995</th>
+                    <th class="num">Gold 999</th>
+                    <th class="num">Cash</th>
+                    <th class="num">RTGS</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            <% if (!transactions || transactions.length === 0) { %>
+                <tr><td colspan="11" style="text-align:center; padding: 20px; color: #64748b;">No transactions found.</td></tr>
+            <% } %>
+            <% (transactions || []).forEach(function(row) { %>
+                <%
+                const style = styles[row.transaction_type] || { class: 'type-other', name: 'Transaction' };
+                const gold999 = (Number(row.balance_cat_995) || 0) * 0.995;
+                %>
+                <tr>
+                    <td><%= row.transaction_date %></td>
+                    <td><span class="directory-action <%= row.liya_diya === 'diya' ? 'warning' : 'primary' %>" style="font-size: 0.65rem;"><%= style.name %></span></td>
+                    <td><strong><%= row.product_name %></strong><% if (row.notes) { %><br><small style="color:#64748b;"><%= row.notes %></small><% } %></td>
+                    <td class="num"><%= Number(row.net_weight) !== 0 ? weight3(row.net_weight) + ' g' : '-' %></td>
+                    <td class="num"><%= Number(row.melting) !== 0 ? row.melting + '%' : '-' %></td>
+                    <td class="num"><%= Number(row.rate) !== 0 ? row.rate + '%' : '-' %></td>
+                    <td class="num"><%= Number(row.balance_cat_995) !== 0 ? weight3(row.balance_cat_995) + ' g' : '-' %></td>
+                    <td class="num directory-gold-value"><%= Number(row.balance_cat_995) !== 0 ? weight3(gold999) + ' g' : '-' %></td>
+                    <td class="num"><%= Number(row.cash_amount) !== 0 ? '₹ ' + money(row.cash_amount) : '-' %></td>
+                    <td class="num"><%= Number(row.rtgs_amount) !== 0 ? '₹ ' + money(row.rtgs_amount) : '-' %></td>
+                    <td class="actions" style="white-space: nowrap;">
+                        <a class="directory-action" href="/transactions/edit?id=<%= row.id %>">Edit</a>
+                    </td>
+                </tr>
+            <% }); %>
+            </tbody>
+        </table>
+    </section>
+
+    <script>
+    function tryPrint() {
+        try {
+            window.print();
+        } catch (e) {
+            alert('Printing inside an embedded preview is restricted by browser sandbox. Open the app in a new tab to print.');
+        }
+    }
+
+    function switchView(mode) {
+        const tView = document.getElementById('ledger-t-view');
+        const cardView = document.getElementById('ledger-card-view');
+        const tableView = document.getElementById('ledger-table-view');
+        const root = document.querySelector('.mobile-ledger');
+
+        const btnT = document.getElementById('btn-view-t');
+        const btnCard = document.getElementById('btn-view-card');
+        const btnTable = document.getElementById('btn-view-table');
+
+        // Hide all
+        if (tView) tView.style.display = 'none';
+        if (cardView) cardView.style.display = 'none';
+        if (tableView) tableView.style.display = 'none';
+
+        if (btnT) btnT.classList.remove('active');
+        if (btnCard) btnCard.classList.remove('active');
+        if (btnTable) btnTable.classList.remove('active');
+
+        if (mode === 't-ledger') {
+            if (tView) tView.style.display = 'block';
+            if (btnT) btnT.classList.add('active');
+            if (root) root.classList.add('wide-mode');
+        } else if (mode === 'card') {
+            if (cardView) cardView.style.display = 'block';
+            if (btnCard) btnCard.classList.add('active');
+            if (root) root.classList.remove('wide-mode');
+        } else if (mode === 'table') {
+            if (tableView) tableView.style.display = 'block';
+            if (btnTable) btnTable.classList.add('active');
+            if (root) root.classList.add('wide-mode');
+        }
+
+        try {
+            localStorage.setItem('vyapari_ledger_mode', mode);
+        } catch (e) {}
+    }
+
+    function toggleLedgerView() {
+        const tView = document.getElementById('ledger-t-view');
+        if (tView && tView.style.display === 'block') {
+            switchView('card');
+        } else {
+            switchView('t-ledger');
+        }
+    }
+
+    // Restore user preference if stored
+    (function() {
+        try {
+            const saved = localStorage.getItem('vyapari_ledger_mode');
+            if (saved && ['t-ledger', 'card', 'table'].includes(saved)) {
+                switchView(saved);
+            } else {
+                switchView('t-ledger');
+            }
+        } catch (e) {
+            switchView('t-ledger');
+        }
+    })();
+    </script>
+
 
     <section class="panel no-print" style="margin-top: 20px;">
         <form class="actions" method="post" action="/vyaparis/roundoff">
