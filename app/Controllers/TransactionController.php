@@ -14,6 +14,13 @@ use function App\Core\flash;
 final class TransactionController extends Controller
 {
     private $transactions;
+    private const SYSTEM_PRODUCT_NAMES = [
+        'fine-diya' => 'FINE DIYA',
+        'cash-diya' => 'CASH PAID',
+        'bank-payment-diya' => 'RTGS DONE',
+        'cash-rate-cut' => 'CASH CUT FINE JAMA',
+        'bill-rate-cut' => 'BILL CUT FINE JAMA',
+    ];
 
     public function __construct()
     {
@@ -55,11 +62,18 @@ final class TransactionController extends Controller
                 'liya_diya' => 'diya',
                 'gross_weight' => -abs((float) $payload['gross_weight']),
                 'net_weight' => -abs((float) $payload['net_weight']),
+                'cash_charge_amount' => 0,
+                'bill_charge_amount' => 0,
+                'ten_gram_bill_995_rate' => 0,
+                'ten_gram_cash_995_rate' => 0,
+                'gst_bhav' => 0,
+                'cash_bhav' => 0,
                 'cash_amount' => 0,
                 'rtgs_amount' => 0,
             ]));
             $payload['liya_diya'] = 'liya';
             $payload['net_weight'] = 0;
+            $payload['melting'] = 0;
             $payload['balance_cat_995'] = 0;
         }
         $this->transactions->create($payload);
@@ -103,6 +117,7 @@ final class TransactionController extends Controller
     private function calculatedPayload(array $input): array
     {
         $type = $input['transaction_type'] ?? 'maal-liya';
+        $input = $this->applyYiiDefaults($type, $input);
         $net = (float) ($input['net_weight'] ?? 0);
         $gross = (float) ($input['gross_weight'] ?? 0);
         $melting = (float) ($input['melting'] ?? 0);
@@ -165,7 +180,7 @@ final class TransactionController extends Controller
             'product_id' => ($input['product_id'] ?? '') !== '' ? (int) $input['product_id'] : null,
             'transaction_type' => $type,
             'liya_diya' => $side,
-            'product_name' => trim($input['product_name'] ?? LedgerTransaction::TYPES[$type] ?? $type),
+            'product_name' => trim($input['product_name'] ?? self::SYSTEM_PRODUCT_NAMES[$type] ?? LedgerTransaction::TYPES[$type] ?? $type),
             'gross_weight' => round($gross, 3),
             'net_weight' => round($net, 3),
             'melting' => round($melting, 3),
@@ -184,5 +199,36 @@ final class TransactionController extends Controller
             'transaction_date' => $input['transaction_date'] ?: date('Y-m-d'),
             'notes' => trim($input['notes'] ?? ''),
         ];
+    }
+
+    private function applyYiiDefaults(string $type, array $input): array
+    {
+        if (isset(self::SYSTEM_PRODUCT_NAMES[$type]) && trim((string) ($input['product_name'] ?? '')) === '') {
+            $input['product_name'] = self::SYSTEM_PRODUCT_NAMES[$type];
+        }
+
+        if (in_array($type, ['fine-diya', 'cash-diya', 'bank-payment-diya', 'cash-rate-cut', 'bill-rate-cut'], true)) {
+            $input['product_id'] = '';
+        }
+
+        $zeroByType = [
+            'cash-diya' => ['bill_charge_amount', 'ten_gram_bill_995_rate', 'ten_gram_cash_995_rate', 'rate', 'gross_weight', 'net_weight', 'melting'],
+            'bank-payment-diya' => ['gross_weight', 'net_weight', 'melting', 'rate', 'cash_charge_amount', 'ten_gram_bill_995_rate', 'ten_gram_cash_995_rate'],
+            'fine-diya' => ['rate', 'cash_charge_amount', 'bill_charge_amount', 'ten_gram_bill_995_rate', 'ten_gram_cash_995_rate'],
+            'cash-rate-cut' => ['rate', 'bill_charge_amount', 'ten_gram_bill_995_rate'],
+            'bill-rate-cut' => ['rate', 'cash_charge_amount', 'ten_gram_cash_995_rate'],
+        ];
+
+        foreach ($zeroByType[$type] ?? [] as $field) {
+            if (!isset($input[$field]) || $input[$field] === '') {
+                $input[$field] = 0;
+            }
+        }
+
+        if (!isset($input['product_name']) || trim((string) $input['product_name']) === '') {
+            $input['product_name'] = LedgerTransaction::TYPES[$type] ?? $type;
+        }
+
+        return $input;
     }
 }
