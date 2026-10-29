@@ -80,6 +80,27 @@ const quick = [
         </article>
     </section>
 
+    <section class="ledger-account-actions no-print" aria-label="Ledger account actions">
+        <form method="post" action="/vyaparis/roundoff" class="ledger-account-action carry-forward-form">
+            <input type="hidden" name="vyapari_id" value="<%= vyapariId %>">
+            <input type="hidden" name="end_date" value="<%= end %>">
+            <input type="hidden" name="grandtotal_cash" value="<%= closing.cash %>">
+            <input type="hidden" name="grandtotal_rtgs" value="<%= closing.rtgs %>">
+            <input type="hidden" name="grandtotal_cat_995" value="<%= closing.cat_995 %>">
+            <button class="ledger-account-button carry-forward" type="submit">
+                <span class="ledger-account-icon">↻</span>
+                <span><strong>Carried Forward</strong><small>Carry current balances to the next period</small></span>
+            </button>
+        </form>
+        <form method="post" action="/vyaparis/settle" class="ledger-account-action settle-form" onsubmit="return confirm('Are you sure you want to settle all transactions for this Vyapari?');">
+            <input type="hidden" name="vyapari_id" value="<%= vyapariId %>">
+            <button class="ledger-account-button settle" type="submit">
+                <span class="ledger-account-icon">✓</span>
+                <span><strong>Settle Account</strong><small>Clear all transactions for this Vyapari</small></span>
+            </button>
+        </form>
+    </section>
+
     <section class="quick-actions">
         <h2>Add transaction</h2>
         <div class="quick-action-grid">
