@@ -7,6 +7,8 @@
         <label>Password <input type="password" name="password" value="<%= password || 'ChangeThisPassword123' %>" required></label>
         <button class="btn primary" type="submit">Login</button>
     </form>
+    <button id="passkey-login" class="btn" type="button" style="width:100%; margin-top:10px;" hidden>Login with fingerprint / Face ID</button>
+    <p id="passkey-message" class="muted" style="font-size:.75rem; margin:.5rem 0 0;"></p>
     <div style="margin-top: 14px; display: grid; gap: 8px;">
         <form method="post" action="/login">
             <input type="hidden" name="email" value="admin@example.com">
@@ -18,5 +20,14 @@
         <strong>Demo Login:</strong> admin@example.com &bull; ChangeThisPassword123
     </div>
 </section>
+<script src="https://cdn.jsdelivr.net/npm/@simplewebauthn/browser@13.2.2/dist/bundle/index.js" crossorigin="anonymous"></script>
+<script>
+(() => { const email=document.querySelector('[name="email"]'), button=document.getElementById('passkey-login'), message=document.getElementById('passkey-message');
+  const refresh=async()=>{ if(!window.PublicKeyCredential||!email.value.trim()){button.hidden=true;return;} const r=await fetch('/auth/passkey/status?email='+encodeURIComponent(email.value.trim())); button.hidden=!(await r.json()).enabled; };
+  email.addEventListener('input',refresh); email.addEventListener('change',refresh); refresh();
+  button.addEventListener('click',async()=>{button.disabled=true;message.textContent='Waiting for device verification…';try{const options=await (await fetch('/auth/passkey/login/options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email.value})})).json();if(options.error)throw Error(options.error);const assertion=await SimpleWebAuthnBrowser.startAuthentication({optionsJSON:options});const result=await (await fetch('/auth/passkey/login/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(assertion)})).json();if(result.error)throw Error(result.error);location.href=result.redirect||'/';}catch(e){message.textContent=e.message||'Fingerprint login was cancelled.';button.disabled=false;}});
+})();
+</script>
 <%- include('../layouts/footer') %>
+
 
