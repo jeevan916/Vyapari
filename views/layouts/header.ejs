@@ -22,8 +22,14 @@
         <form method="post" action="/logout">
             <button class="logout" type="submit">Logout (<%= user.name || 'Admin' %>)</button>
         </form>
+        <button id="register-passkey" class="logout" type="button">Enable fingerprint login</button>
     </header>
+    <script src="https://cdn.jsdelivr.net/npm/@simplewebauthn/browser@13.2.2/dist/bundle/index.js" crossorigin="anonymous"></script>
+    <script>
+    document.getElementById('register-passkey')?.addEventListener('click',async function(){this.disabled=true;try{const options=await (await fetch('/auth/passkey/register/options',{method:'POST'})).json();if(options.error)throw Error(options.error);const credential=await SimpleWebAuthnBrowser.startRegistration({optionsJSON:options});const result=await (await fetch('/auth/passkey/register/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(credential)})).json();if(result.error)throw Error(result.error);alert('Fingerprint login enabled on this device.');}catch(e){alert(e.message||'Could not enable fingerprint login.');}this.disabled=false;});
+    </script>
 <% } %>
 <main class="<%= (typeof user !== 'undefined' && user) ? 'main container-fluid' : 'auth-main' %>">
     <% if (typeof flash !== 'undefined' && flash && flash.success) { %><div class="alert success"><%= flash.success %></div><% } %>
     <% if (typeof flash !== 'undefined' && flash && flash.error) { %><div class="alert error"><%= flash.error %></div><% } %>
+
