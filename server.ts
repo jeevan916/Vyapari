@@ -3,6 +3,12 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
+} from '@simplewebauthn/server';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,8 +47,15 @@ declare module 'express-session' {
   interface SessionData {
     user?: { name: string; email: string };
     flash?: { success?: string; error?: string };
+    webauthnChallenge?: string;
+    passkeyEmail?: string;
   }
 }
+
+type Passkey = { id: string; publicKey: Uint8Array; counter: number; transports?: string[] };
+const passkeys = new Map<string, Passkey[]>();
+const rpId = (req: Request) => process.env.WEBAUTHN_RP_ID || req.hostname;
+const origin = (req: Request) => process.env.WEBAUTHN_ORIGIN || `${req.protocol}://${req.get('host')}`;
 
 // Helpers
 function money(val: number | string | null | undefined): string {
@@ -503,6 +516,55 @@ app.get('/login', (req: Request, res: Response) => {
     email: req.query.email || '',
     password: '',
   });
+});
+
+app.get('/auth/passkey/status', (req: Request, res: Response) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  res.json({ enabled: Boolean(email && (passkeys.get(email)?.length || 0) > 0) });
+});
+
+app.post('/auth/passkey/register/options', requireLogin, async (req: Request, res: Response) => {
+  const email = req.session.user!.email.toLowerCase();
+  const options = await generateRegistrationOptions({ rpName: APP_NAME, rpID: rpId(req), userName: email, userDisplayName: req.session.user!.name, userID: Buffer.from(email), attestationType: 'none', excludeCredentials: (passkeys.get(email) || []).map((key) => ({ id: key.id })) });
+  req.session.webauthnChallenge = options.challenge;
+  res.json(options);
+});
+
+app.post('/auth/passkey/register/verify', requireLogin, async (req: Request, res: Response) => {
+  const challenge = req.session.webauthnChallenge;
+  if (!challenge) return res.status(400).json({ error: 'Registration expired. Try again.' });
+  try {
+    const result = await verifyRegistrationResponse({ response: req.body, expectedChallenge: challenge, expectedOrigin: origin(req), expectedRPID: rpId(req) });
+    if (!result.verified || !result.registrationInfo) return res.status(400).json({ error: 'Passkey registration failed.' });
+    const credential = result.registrationInfo.credential;
+    const email = req.session.user!.email.toLowerCase();
+    const keys = passkeys.get(email) || [];
+    keys.push({ id: credential.id, publicKey: credential.publicKey, counter: credential.counter, transports: req.body.response?.transports });
+    passkeys.set(email, keys); delete req.session.webauthnChallenge;
+    res.json({ verified: true });
+  } catch (error) { console.error('Passkey registration error:', error); res.status(400).json({ error: 'Passkey registration failed.' }); }
+});
+
+app.post('/auth/passkey/login/options', async (req: Request, res: Response) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const keys = passkeys.get(email) || [];
+  if (!email || !keys.length) return res.status(404).json({ error: 'No passkey is registered for this email.' });
+  const options = await generateAuthenticationOptions({ rpID: rpId(req), allowCredentials: keys.map((key) => ({ id: key.id, transports: key.transports as any })), userVerification: 'required' });
+  req.session.webauthnChallenge = options.challenge; req.session.passkeyEmail = email; res.json(options);
+});
+
+app.post('/auth/passkey/login/verify', async (req: Request, res: Response) => {
+  const challenge = req.session.webauthnChallenge; const email = req.session.passkeyEmail;
+  const key = email ? (passkeys.get(email) || []).find((item) => item.id === req.body.id) : undefined;
+  if (!challenge || !email || !key) return res.status(400).json({ error: 'Login challenge expired. Try again.' });
+  try {
+    const result = await verifyAuthenticationResponse({ response: req.body, expectedChallenge: challenge, expectedOrigin: origin(req), expectedRPID: rpId(req), credential: { id: key.id, publicKey: key.publicKey, counter: key.counter, transports: key.transports as any } });
+    if (!result.verified) return res.status(401).json({ error: 'Fingerprint verification failed.' });
+    key.counter = result.authenticationInfo.newCounter;
+    const name = email === (process.env.ADMIN_EMAIL || 'admin@example.com').toLowerCase() ? (process.env.ADMIN_NAME || 'Admin') : email.split('@')[0];
+    req.session.user = { name: name.charAt(0).toUpperCase() + name.slice(1), email }; delete req.session.webauthnChallenge; delete req.session.passkeyEmail;
+    req.session.save(() => res.json({ verified: true, redirect: '/' }));
+  } catch (error) { console.error('Passkey login error:', error); res.status(401).json({ error: 'Fingerprint verification failed.' }); }
 });
 
 app.post('/login', (req: Request, res: Response) => {
@@ -1080,3 +1142,4 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Vyapari app running on http://0.0.0.0:${PORT}`);
 });
+
